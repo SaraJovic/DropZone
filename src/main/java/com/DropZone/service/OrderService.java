@@ -5,6 +5,8 @@ import com.DropZone.dto.response.OrderItemResponse;
 import com.DropZone.dto.response.OrderResponse;
 import com.DropZone.entity.*;
 import com.DropZone.enums.OrderStatus;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +34,7 @@ public class OrderService {
 
     public OrderResponse getOrderById(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         return mapToOrderResponse(order);
     }
 
@@ -44,19 +46,19 @@ public class OrderService {
     @Transactional
     public OrderResponse createOrder(Long userId, OrderRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         if (cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty");
+            throw new BadRequestException("Cart is empty");
         }
 
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant variant = cartItem.getProductVariant();
             if (variant.getStockQuantity() < cartItem.getQuantity()) {
-                throw new RuntimeException("Not enough stock for: " + variant.getProduct().getName());
+                throw new BadRequestException("Not enough stock for: " + variant.getProduct().getName());
             }
         }
 
@@ -98,7 +100,7 @@ public class OrderService {
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         order.setStatus(status);
         return mapToOrderResponse(orderRepository.save(order));
     }
@@ -106,10 +108,10 @@ public class OrderService {
     @Transactional
     public OrderResponse cancelOrder(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         if (order.getStatus() != OrderStatus.PENDING) {
-            throw new RuntimeException("Only PENDING orders can be cancelled");
+            throw new BadRequestException("Only PENDING orders can be cancelled");
         }
 
         for (OrderItem item : order.getItems()) {

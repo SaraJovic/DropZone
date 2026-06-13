@@ -7,6 +7,8 @@ import com.DropZone.entity.Cart;
 import com.DropZone.entity.CartItem;
 import com.DropZone.entity.ProductVariant;
 import com.DropZone.entity.User;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.CartItemRepository;
 import com.DropZone.repository.CartRepository;
 import com.DropZone.repository.ProductVariantRepository;
@@ -30,7 +32,7 @@ public class CartService {
 
     public CartResponse getCartByUserId(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         return mapToCartResponse(cart);
     }
 
@@ -40,10 +42,10 @@ public class CartService {
                 .orElseGet(() -> createCartForUser(userId));
 
         ProductVariant variant = productVariantRepository.findById(request.getProductVariantId())
-                .orElseThrow(() -> new RuntimeException("Product variant not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product variant not found"));
 
         if (variant.getStockQuantity() < request.getQuantity()) {
-            throw new RuntimeException("Not enough stock available");
+            throw new BadRequestException("Not enough stock available");
         }
 
         CartItem existingItem = cartItemRepository
@@ -53,7 +55,7 @@ public class CartService {
         if (existingItem != null) {
             int newQuantity = existingItem.getQuantity() + request.getQuantity();
             if (variant.getStockQuantity() < newQuantity) {
-                throw new RuntimeException("Not enough stock available");
+                throw new BadRequestException("Not enough stock available");
             }
             existingItem.setQuantity(newQuantity);
             cartItemRepository.save(existingItem);
@@ -72,14 +74,14 @@ public class CartService {
     @Transactional
     public CartResponse updateCartItem(Long userId, Long cartItemId, Integer quantity) {
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
 
         CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found"));
 
         ProductVariant variant = cartItem.getProductVariant();
         if (variant.getStockQuantity() < quantity) {
-            throw new RuntimeException("Not enough stock available");
+            throw new BadRequestException("Not enough stock available");
         }
 
         cartItem.setQuantity(quantity);
@@ -91,7 +93,7 @@ public class CartService {
     @Transactional
     public void removeItemFromCart(Long cartItemId) {
         if (!cartItemRepository.existsById(cartItemId)) {
-            throw new RuntimeException("Cart item not found");
+            throw new ResourceNotFoundException("Cart item not found");
         }
         cartItemRepository.deleteById(cartItemId);
     }
@@ -99,13 +101,13 @@ public class CartService {
     @Transactional
     public void clearCart(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         cartItemRepository.deleteAll(cart.getItems());
     }
 
     private Cart createCartForUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Cart cart = Cart.builder()
                 .user(user)
                 .build();

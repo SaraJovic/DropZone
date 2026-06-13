@@ -9,6 +9,7 @@ import com.DropZone.entity.Category;
 import com.DropZone.entity.Product;
 import com.DropZone.entity.ProductImage;
 import com.DropZone.entity.ProductVariant;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.CategoryRepository;
 import com.DropZone.repository.ProductImageRepository;
 import com.DropZone.repository.ProductRepository;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,7 +39,7 @@ public class ProductService {
 
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         return mapToProductResponse(product);
     }
 
@@ -54,7 +56,7 @@ public class ProductService {
     @Transactional
     public ProductResponse createProduct(ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         Product product = Product.builder()
                 .name(request.getName())
@@ -69,10 +71,10 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProduct(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
@@ -85,7 +87,7 @@ public class ProductService {
     @Transactional
     public void deleteProduct(Long id) {
         if (!productRepository.existsById(id)) {
-            throw new RuntimeException("Product not found");
+            throw new ResourceNotFoundException("Product not found");
         }
         productRepository.deleteById(id);
     }
@@ -93,7 +95,7 @@ public class ProductService {
     @Transactional
     public ProductVariantResponse addVariant(Long productId, ProductVariantRequest request) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         ProductVariant variant = ProductVariant.builder()
                 .size(request.getSize())
@@ -108,7 +110,7 @@ public class ProductService {
     @Transactional
     public ProductImageResponse addImage(Long productId, String imageUrl, Boolean isPrimary) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         ProductImage image = ProductImage.builder()
                 .imageUrl(imageUrl)
@@ -126,8 +128,8 @@ public class ProductService {
                 .description(product.getDescription())
                 .price(product.getPrice())
                 .categoryName(product.getCategory().getName())
-                .images(product.getImages() != null ? product.getImages().stream().map(this::mapToImageResponse).collect(Collectors.toList()) : java.util.Collections.emptyList())
-                .variants(product.getVariants() != null ? product.getVariants().stream().map(this::mapToVariantResponse).collect(Collectors.toList()) : java.util.Collections.emptyList())
+                .images(product.getImages() != null ? product.getImages().stream().map(this::mapToImageResponse).collect(Collectors.toList()) : Collections.emptyList())
+                .variants(product.getVariants() != null ? product.getVariants().stream().map(this::mapToVariantResponse).collect(Collectors.toList()) : Collections.emptyList())
                 .createdAt(product.getCreatedAt())
                 .build();
     }

@@ -5,6 +5,8 @@ import com.DropZone.dto.response.ReviewResponse;
 import com.DropZone.entity.Product;
 import com.DropZone.entity.Review;
 import com.DropZone.entity.User;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.OrderRepository;
 import com.DropZone.repository.ProductRepository;
 import com.DropZone.repository.ReviewRepository;
@@ -33,13 +35,13 @@ public class ReviewService {
     @Transactional
     public ReviewResponse createReview(Long userId, Long productId, ReviewRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (reviewRepository.existsByUserIdAndProductId(userId, productId)) {
-            throw new RuntimeException("You have already reviewed this product");
+            throw new BadRequestException("You have already reviewed this product");
         }
 
         boolean hasPurchased = orderRepository.findByUserId(userId).stream()
@@ -47,7 +49,7 @@ public class ReviewService {
                         .anyMatch(item -> item.getProductVariant().getProduct().getId().equals(productId)));
 
         if (!hasPurchased) {
-            throw new RuntimeException("You can only review products you have purchased");
+            throw new BadRequestException("You can only review products you have purchased");
         }
 
         Review review = Review.builder()
@@ -63,7 +65,7 @@ public class ReviewService {
     @Transactional
     public void deleteReview(Long reviewId) {
         if (!reviewRepository.existsById(reviewId)) {
-            throw new RuntimeException("Review not found");
+            throw new ResourceNotFoundException("Review not found");
         }
         reviewRepository.deleteById(reviewId);
     }

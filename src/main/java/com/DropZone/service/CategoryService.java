@@ -3,6 +3,8 @@ package com.DropZone.service;
 import com.DropZone.dto.request.CategoryRequest;
 import com.DropZone.dto.response.CategoryResponse;
 import com.DropZone.entity.Category;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,14 +26,14 @@ public class CategoryService {
 
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         return mapToCategoryResponse(category);
     }
 
     @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
         if (categoryRepository.existsByName(request.getName())) {
-            throw new RuntimeException("Category already exists");
+            throw new BadRequestException("Category already exists");
         }
 
         Category category = Category.builder()
@@ -45,7 +47,7 @@ public class CategoryService {
     @Transactional
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         category.setName(request.getName());
         category.setDescription(request.getDescription());
@@ -56,7 +58,7 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long id) {
         if (!categoryRepository.existsById(id)) {
-            throw new RuntimeException("Category not found");
+            throw new ResourceNotFoundException("Category not found");
         }
         categoryRepository.deleteById(id);
     }

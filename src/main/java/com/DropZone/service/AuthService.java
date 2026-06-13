@@ -6,15 +6,18 @@ import com.DropZone.dto.response.AuthResponse;
 import com.DropZone.dto.response.UserResponse;
 import com.DropZone.entity.User;
 import com.DropZone.enums.Role;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.UserRepository;
 import com.DropZone.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -28,7 +31,7 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already in use");
+            throw new BadRequestException("Email already in use");
         }
 
         User user = User.builder()
@@ -41,7 +44,6 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // Dodavanje role u JWT Payload
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().name());
 
@@ -50,7 +52,7 @@ public class AuthService {
                 new org.springframework.security.core.userdetails.User(
                         user.getEmail(),
                         user.getPassword(),
-                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
                 )
         );
 
@@ -69,9 +71,8 @@ public class AuthService {
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Dodavanje role u JWT Payload
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", user.getRole().name());
 
@@ -80,7 +81,7 @@ public class AuthService {
                 new org.springframework.security.core.userdetails.User(
                         user.getEmail(),
                         user.getPassword(),
-                        java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
                 )
         );
 

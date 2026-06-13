@@ -6,6 +6,8 @@ import com.DropZone.entity.Product;
 import com.DropZone.entity.User;
 import com.DropZone.entity.Wishlist;
 import com.DropZone.entity.WishlistItem;
+import com.DropZone.exception.BadRequestException;
+import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.ProductRepository;
 import com.DropZone.repository.UserRepository;
 import com.DropZone.repository.WishlistItemRepository;
@@ -28,7 +30,7 @@ public class WishlistService {
 
     public WishlistResponse getWishlistByUserId(Long userId) {
         Wishlist wishlist = wishlistRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Wishlist not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Wishlist not found"));
         return mapToWishlistResponse(wishlist);
     }
 
@@ -38,10 +40,10 @@ public class WishlistService {
                 .orElseGet(() -> createWishlistForUser(userId));
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
         if (wishlistItemRepository.existsByWishlistIdAndProductId(wishlist.getId(), productId)) {
-            throw new RuntimeException("Product already in wishlist");
+            throw new BadRequestException("Product already in wishlist");
         }
 
         WishlistItem item = WishlistItem.builder()
@@ -57,14 +59,14 @@ public class WishlistService {
     @Transactional
     public void removeItemFromWishlist(Long wishlistItemId) {
         if (!wishlistItemRepository.existsById(wishlistItemId)) {
-            throw new RuntimeException("Wishlist item not found");
+            throw new ResourceNotFoundException("Wishlist item not found");
         }
         wishlistItemRepository.deleteById(wishlistItemId);
     }
 
     private Wishlist createWishlistForUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Wishlist wishlist = Wishlist.builder()
                 .user(user)
                 .build();
@@ -83,11 +85,12 @@ public class WishlistService {
     }
 
     private WishlistItemResponse mapToWishlistItemResponse(WishlistItem item) {
-        String primaryImageUrl = item.getProduct().getImages().stream()
-                .filter(img -> img.getIsPrimary())
-                .map(img -> img.getImageUrl())
-                .findFirst()
-                .orElse(null);
+        String primaryImageUrl = item.getProduct().getImages() != null ?
+                item.getProduct().getImages().stream()
+                        .filter(img -> img.getIsPrimary())
+                        .map(img -> img.getImageUrl())
+                        .findFirst()
+                        .orElse(null) : null;
 
         return WishlistItemResponse.builder()
                 .id(item.getId())
