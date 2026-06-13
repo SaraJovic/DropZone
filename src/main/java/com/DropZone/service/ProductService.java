@@ -1,0 +1,151 @@
+package com.DropZone.service;
+
+import com.DropZone.dto.request.ProductRequest;
+import com.DropZone.dto.request.ProductVariantRequest;
+import com.DropZone.dto.response.ProductImageResponse;
+import com.DropZone.dto.response.ProductResponse;
+import com.DropZone.dto.response.ProductVariantResponse;
+import com.DropZone.entity.Category;
+import com.DropZone.entity.Product;
+import com.DropZone.entity.ProductImage;
+import com.DropZone.entity.ProductVariant;
+import com.DropZone.repository.CategoryRepository;
+import com.DropZone.repository.ProductImageRepository;
+import com.DropZone.repository.ProductRepository;
+import com.DropZone.repository.ProductVariantRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ProductService {
+
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final ProductVariantRepository productVariantRepository;
+    private final ProductImageRepository productImageRepository;
+
+    public Page<ProductResponse> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable).map(this::mapToProductResponse);
+    }
+
+    public ProductResponse getProductById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        return mapToProductResponse(product);
+    }
+
+    public List<ProductResponse> getProductsByCategory(Long categoryId) {
+        return productRepository.findByCategoryId(categoryId)
+                .stream().map(this::mapToProductResponse).collect(Collectors.toList());
+    }
+
+    public List<ProductResponse> searchProducts(String name) {
+        return productRepository.findByNameContainingIgnoreCase(name)
+                .stream().map(this::mapToProductResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ProductResponse createProduct(ProductRequest request) {
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        Product product = Product.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .price(request.getPrice())
+                .category(category)
+                .build();
+
+        return mapToProductResponse(productRepository.save(product));
+    }
+
+    @Transactional
+    public ProductResponse updateProduct(Long id, ProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setCategory(category);
+
+        return mapToProductResponse(productRepository.save(product));
+    }
+
+    @Transactional
+    public void deleteProduct(Long id) {
+        if (!productRepository.existsById(id)) {
+            throw new RuntimeException("Product not found");
+        }
+        productRepository.deleteById(id);
+    }
+
+    @Transactional
+    public ProductVariantResponse addVariant(Long productId, ProductVariantRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        ProductVariant variant = ProductVariant.builder()
+                .size(request.getSize())
+                .color(request.getColor())
+                .stockQuantity(request.getStockQuantity())
+                .product(product)
+                .build();
+
+        return mapToVariantResponse(productVariantRepository.save(variant));
+    }
+
+    @Transactional
+    public ProductImageResponse addImage(Long productId, String imageUrl, Boolean isPrimary) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        ProductImage image = ProductImage.builder()
+                .imageUrl(imageUrl)
+                .isPrimary(isPrimary)
+                .product(product)
+                .build();
+
+        return mapToImageResponse(productImageRepository.save(image));
+    }
+
+    private ProductResponse mapToProductResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .categoryName(product.getCategory().getName())
+                .images(product.getImages() != null ? product.getImages().stream().map(this::mapToImageResponse).collect(Collectors.toList()) : java.util.Collections.emptyList())
+                .variants(product.getVariants() != null ? product.getVariants().stream().map(this::mapToVariantResponse).collect(Collectors.toList()) : java.util.Collections.emptyList())
+                .createdAt(product.getCreatedAt())
+                .build();
+    }
+
+    private ProductVariantResponse mapToVariantResponse(ProductVariant variant) {
+        return ProductVariantResponse.builder()
+                .id(variant.getId())
+                .size(variant.getSize())
+                .color(variant.getColor())
+                .stockQuantity(variant.getStockQuantity())
+                .build();
+    }
+
+    private ProductImageResponse mapToImageResponse(ProductImage image) {
+        return ProductImageResponse.builder()
+                .id(image.getId())
+                .imageUrl(image.getImageUrl())
+                .isPrimary(image.getIsPrimary())
+                .build();
+    }
+}
