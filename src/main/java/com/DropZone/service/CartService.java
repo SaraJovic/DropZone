@@ -68,7 +68,9 @@ public class CartService {
             cartItemRepository.save(cartItem);
         }
 
-        return mapToCartResponse(cartRepository.findById(cart.getId()).get());
+        Cart updatedCart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
+        return mapToCartResponse(updatedCart);
     }
 
     @Transactional
@@ -108,9 +110,8 @@ public class CartService {
     private Cart createCartForUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Cart cart = Cart.builder()
-                .user(user)
-                .build();
+        Cart cart = new Cart();
+        cart.setUser(user);
         return cartRepository.save(cart);
     }
 

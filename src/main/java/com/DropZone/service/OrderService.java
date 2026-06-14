@@ -33,7 +33,7 @@ public class OrderService {
     }
 
     public OrderResponse getOrderById(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         return mapToOrderResponse(order);
     }
@@ -67,39 +67,36 @@ public class OrderService {
                         .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Order order = Order.builder()
-                .user(user)
-                .status(OrderStatus.PENDING)
-                .totalPrice(totalPrice)
-                .shippingAddress(request.getShippingAddress())
-                .build();
-
-        orderRepository.save(order);
+        Order order = new Order();
+        order.setUser(user);
+        order.setStatus(OrderStatus.PENDING);
+        order.setTotalPrice(totalPrice);
+        order.setShippingAddress(request.getShippingAddress());
 
         for (CartItem cartItem : cart.getItems()) {
             ProductVariant variant = cartItem.getProductVariant();
 
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .productVariant(variant)
-                    .quantity(cartItem.getQuantity())
-                    .priceAtPurchase(variant.getProduct().getPrice())
-                    .build();
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProductVariant(variant);
+            orderItem.setQuantity(cartItem.getQuantity());
+            orderItem.setPriceAtPurchase(variant.getProduct().getPrice());
 
-            orderItemRepository.save(orderItem);
+            order.getItems().add(orderItem);
 
             variant.setStockQuantity(variant.getStockQuantity() - cartItem.getQuantity());
             productVariantRepository.save(variant);
         }
 
+        orderRepository.save(order);
         cartItemRepository.deleteAll(cart.getItems());
 
-        return mapToOrderResponse(orderRepository.findById(order.getId()).get());
+        return mapToOrderResponse(order);
     }
 
     @Transactional
     public OrderResponse updateOrderStatus(Long orderId, OrderStatus status) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
         order.setStatus(status);
         return mapToOrderResponse(orderRepository.save(order));
@@ -107,7 +104,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse cancelOrder(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         if (order.getStatus() != OrderStatus.PENDING) {

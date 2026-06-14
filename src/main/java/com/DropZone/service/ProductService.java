@@ -33,21 +33,25 @@ public class ProductService {
     private final ProductVariantRepository productVariantRepository;
     private final ProductImageRepository productImageRepository;
 
+    @Transactional(readOnly = true)
     public Page<ProductResponse> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable).map(this::mapToProductResponse);
     }
 
+    @Transactional(readOnly = true)
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
         return mapToProductResponse(product);
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByCategory(Long categoryId) {
         return productRepository.findByCategoryId(categoryId)
                 .stream().map(this::mapToProductResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> searchProducts(String name) {
         return productRepository.findByNameContainingIgnoreCase(name)
                 .stream().map(this::mapToProductResponse).collect(Collectors.toList());
