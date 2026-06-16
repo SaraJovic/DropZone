@@ -27,6 +27,7 @@ public class OrderService {
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUserId(Long userId) {
         return orderRepository.findByUserId(userId)
                 .stream().map(this::mapToOrderResponse).collect(Collectors.toList());
@@ -38,6 +39,7 @@ public class OrderService {
         return mapToOrderResponse(order);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAll()
                 .stream().map(this::mapToOrderResponse).collect(Collectors.toList());

@@ -28,6 +28,8 @@ public class WishlistService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
+
+    @Transactional(readOnly = true)
     public WishlistResponse getWishlistByUserId(Long userId) {
         Wishlist wishlist = wishlistRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wishlist not found"));
@@ -53,9 +55,10 @@ public class WishlistService {
 
         wishlistItemRepository.save(item);
 
-        return mapToWishlistResponse(wishlistRepository.findById(wishlist.getId()).get());
-    }
 
+        return mapToWishlistResponse(wishlistRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wishlist not found")));
+    }
     @Transactional
     public void removeItemFromWishlist(Long wishlistItemId) {
         if (!wishlistItemRepository.existsById(wishlistItemId)) {
@@ -67,9 +70,11 @@ public class WishlistService {
     private Wishlist createWishlistForUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Wishlist wishlist = Wishlist.builder()
-                .user(user)
-                .build();
+
+
+        Wishlist wishlist = new Wishlist();
+        wishlist.setUser(user);
+
         return wishlistRepository.save(wishlist);
     }
 

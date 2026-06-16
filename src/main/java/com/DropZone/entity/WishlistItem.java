@@ -1,5 +1,6 @@
 package com.DropZone.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,6 +19,7 @@ public class WishlistItem {
 
     @ManyToOne
     @JoinColumn(name = "wishlist_id", nullable = false)
+    @JsonIgnore
     private Wishlist wishlist;
 
     @ManyToOne

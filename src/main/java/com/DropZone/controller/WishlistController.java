@@ -1,6 +1,7 @@
 package com.DropZone.controller;
 
 import com.DropZone.dto.response.WishlistResponse;
+import com.DropZone.security.SecurityUtils;
 import com.DropZone.service.WishlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,15 +14,17 @@ import org.springframework.web.bind.annotation.*;
 public class WishlistController {
 
     private final WishlistService wishlistService;
+    private final SecurityUtils securityUtils;
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<WishlistResponse> getWishlist(@PathVariable Long userId) {
+    @GetMapping
+    public ResponseEntity<WishlistResponse> getWishlist() {
+        Long userId = securityUtils.getCurrentUser().getId();
         return ResponseEntity.ok(wishlistService.getWishlistByUserId(userId));
     }
 
-    @PostMapping("/{userId}/items/{productId}")
-    public ResponseEntity<WishlistResponse> addItemToWishlist(@PathVariable Long userId,
-                                                              @PathVariable Long productId) {
+    @PostMapping("/items/{productId}")
+    public ResponseEntity<WishlistResponse> addItemToWishlist(@PathVariable Long productId) {
+        Long userId = securityUtils.getCurrentUser().getId();
         return ResponseEntity.ok(wishlistService.addItemToWishlist(userId, productId));
     }
 

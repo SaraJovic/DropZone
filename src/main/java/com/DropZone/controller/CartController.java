@@ -2,6 +2,7 @@ package com.DropZone.controller;
 
 import com.DropZone.dto.request.CartItemRequest;
 import com.DropZone.dto.response.CartResponse;
+import com.DropZone.security.SecurityUtils;
 import com.DropZone.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,22 +16,24 @@ import org.springframework.web.bind.annotation.*;
 public class CartController {
 
     private final CartService cartService;
+    private final SecurityUtils securityUtils;
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<CartResponse> getCart(@PathVariable Long userId) {
+    @GetMapping
+    public ResponseEntity<CartResponse> getCart() {
+        Long userId = securityUtils.getCurrentUser().getId();
         return ResponseEntity.ok(cartService.getCartByUserId(userId));
     }
 
-    @PostMapping("/{userId}/items")
-    public ResponseEntity<CartResponse> addItemToCart(@PathVariable Long userId,
-                                                      @Valid @RequestBody CartItemRequest request) {
+    @PostMapping("/items")
+    public ResponseEntity<CartResponse> addItemToCart(@Valid @RequestBody CartItemRequest request) {
+        Long userId = securityUtils.getCurrentUser().getId();
         return ResponseEntity.ok(cartService.addItemToCart(userId, request));
     }
 
-    @PutMapping("/{userId}/items/{cartItemId}")
-    public ResponseEntity<CartResponse> updateCartItem(@PathVariable Long userId,
-                                                       @PathVariable Long cartItemId,
+    @PutMapping("/items/{cartItemId}")
+    public ResponseEntity<CartResponse> updateCartItem(@PathVariable Long cartItemId,
                                                        @RequestParam Integer quantity) {
+        Long userId = securityUtils.getCurrentUser().getId();
         return ResponseEntity.ok(cartService.updateCartItem(userId, cartItemId, quantity));
     }
 
@@ -40,8 +43,9 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{userId}/clear")
-    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
+    @DeleteMapping("/clear")
+    public ResponseEntity<Void> clearCart() {
+        Long userId = securityUtils.getCurrentUser().getId();
         cartService.clearCart(userId);
         return ResponseEntity.noContent().build();
     }

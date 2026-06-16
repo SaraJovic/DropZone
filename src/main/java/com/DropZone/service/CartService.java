@@ -30,6 +30,7 @@ public class CartService {
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public CartResponse getCartByUserId(Long userId) {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
@@ -105,6 +106,8 @@ public class CartService {
         Cart cart = cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart not found"));
         cartItemRepository.deleteAll(cart.getItems());
+        cart.getItems().clear();
+        cartRepository.save(cart);
     }
 
     private Cart createCartForUser(Long userId) {

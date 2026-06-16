@@ -5,6 +5,7 @@ import com.DropZone.dto.response.ReviewResponse;
 import com.DropZone.entity.Product;
 import com.DropZone.entity.Review;
 import com.DropZone.entity.User;
+import com.DropZone.enums.OrderStatus;
 import com.DropZone.exception.BadRequestException;
 import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.OrderRepository;
@@ -27,7 +28,11 @@ public class ReviewService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
 
+    @Transactional(readOnly = true)
     public List<ReviewResponse> getReviewsByProduct(Long productId) {
+        if (!productRepository.existsById(productId)) {
+            throw new ResourceNotFoundException("Product not found");
+        }
         return reviewRepository.findByProductId(productId)
                 .stream().map(this::mapToReviewResponse).collect(Collectors.toList());
     }
@@ -44,10 +49,11 @@ public class ReviewService {
             throw new BadRequestException("You have already reviewed this product");
         }
 
+
         boolean hasPurchased = orderRepository.findByUserId(userId).stream()
+                .filter(order -> order.getStatus() == OrderStatus.DELIVERED)
                 .anyMatch(order -> order.getItems().stream()
                         .anyMatch(item -> item.getProductVariant().getProduct().getId().equals(productId)));
-
         if (!hasPurchased) {
             throw new BadRequestException("You can only review products you have purchased");
         }
@@ -59,7 +65,10 @@ public class ReviewService {
                 .comment(request.getComment())
                 .build();
 
-        return mapToReviewResponse(reviewRepository.save(review));
+        Review savedReview = reviewRepository.save(review);
+        reviewRepository.flush();
+
+        return mapToReviewResponse(savedReview);
     }
 
     @Transactional
