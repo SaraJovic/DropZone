@@ -9,6 +9,7 @@ import com.DropZone.entity.Category;
 import com.DropZone.entity.Product;
 import com.DropZone.entity.ProductImage;
 import com.DropZone.entity.ProductVariant;
+import com.DropZone.enums.Gender;
 import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.CategoryRepository;
 import com.DropZone.repository.ProductImageRepository;
@@ -57,6 +58,23 @@ public class ProductService {
                 .stream().map(this::mapToProductResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductResponse> filterProducts(Long categoryId, Gender gender) {
+        List<Product> products;
+
+        if (categoryId != null && gender != null) {
+            products = productRepository.findByCategoryIdAndGender(categoryId, gender);
+        } else if (categoryId != null) {
+            products = productRepository.findByCategoryId(categoryId);
+        } else if (gender != null) {
+            products = productRepository.findByGender(gender);
+        } else {
+            products = productRepository.findAll();
+        }
+
+        return products.stream().map(this::mapToProductResponse).collect(Collectors.toList());
+    }
+
     @Transactional
     public ProductResponse createProduct(ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
@@ -66,6 +84,7 @@ public class ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
+                .gender(request.getGender())
                 .category(category)
                 .build();
 
@@ -83,6 +102,7 @@ public class ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
+        product.setGender(request.getGender());
         product.setCategory(category);
 
         return mapToProductResponse(productRepository.save(product));
@@ -131,6 +151,8 @@ public class ProductService {
                 .name(product.getName())
                 .description(product.getDescription())
                 .price(product.getPrice())
+                .gender(product.getGender())
+                .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .images(product.getImages() != null ? product.getImages().stream().map(this::mapToImageResponse).collect(Collectors.toList()) : Collections.emptyList())
                 .variants(product.getVariants() != null ? product.getVariants().stream().map(this::mapToVariantResponse).collect(Collectors.toList()) : Collections.emptyList())

@@ -5,6 +5,7 @@ import com.DropZone.dto.request.ProductVariantRequest;
 import com.DropZone.dto.response.ProductImageResponse;
 import com.DropZone.dto.response.ProductResponse;
 import com.DropZone.dto.response.ProductVariantResponse;
+import com.DropZone.enums.Gender;
 import com.DropZone.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,12 @@ public class ProductController {
         return ResponseEntity.ok(productService.searchProducts(name));
     }
 
+    @GetMapping("/filter")
+    public ResponseEntity<List<ProductResponse>> filterProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Gender gender) {
+        return ResponseEntity.ok(productService.filterProducts(categoryId, gender));
+    }
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {

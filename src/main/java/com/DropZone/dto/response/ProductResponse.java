@@ -1,5 +1,6 @@
 package com.DropZone.dto.response;
 
+import com.DropZone.enums.Gender;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +16,8 @@ public class ProductResponse {
     private String name;
     private String description;
     private BigDecimal price;
+    private Gender gender;
+    private Long categoryId;
     private String categoryName;
     private List<ProductImageResponse> images;
     private List<ProductVariantResponse> variants;
