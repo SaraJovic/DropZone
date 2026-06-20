@@ -8,12 +8,15 @@ import com.DropZone.enums.OrderStatus;
 import com.DropZone.exception.BadRequestException;
 import com.DropZone.exception.ResourceNotFoundException;
 import com.DropZone.repository.*;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +29,8 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final ProductVariantRepository productVariantRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final StripeService stripeService;
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUserId(Long userId) {
@@ -75,7 +80,9 @@ public class OrderService {
         order.setTotalPrice(totalPrice);
         order.setShippingAddress(request.getShippingAddress());
 
-        for (CartItem cartItem : cart.getItems()) {
+        List<CartItem> itemsToDelete = new java.util.ArrayList<>(cart.getItems());
+
+        for (CartItem cartItem : itemsToDelete) {
             ProductVariant variant = cartItem.getProductVariant();
 
             OrderItem orderItem = new OrderItem();
@@ -91,7 +98,10 @@ public class OrderService {
         }
 
         orderRepository.save(order);
-        cartItemRepository.deleteAll(cart.getItems());
+
+        cart.getItems().clear();
+        cartItemRepository.deleteAll(itemsToDelete);
+        cartRepository.save(cart);
 
         return mapToOrderResponse(order);
     }
@@ -113,14 +123,37 @@ public class OrderService {
             throw new BadRequestException("Only PENDING orders can be cancelled");
         }
 
+        // Restore stock
         for (OrderItem item : order.getItems()) {
             ProductVariant variant = item.getProductVariant();
             variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
             productVariantRepository.save(variant);
         }
 
+        // Attempt refund if a payment was made for this order (does not block cancellation if it fails)
+        refundIfPaid(orderId);
+
         order.setStatus(OrderStatus.CANCELLED);
         return mapToOrderResponse(orderRepository.save(order));
+    }
+
+    private void refundIfPaid(Long orderId) {
+        Optional<Payment> paymentOpt = paymentRepository.findByOrderId(orderId);
+        if (paymentOpt.isEmpty()) {
+            return;
+        }
+
+        Payment payment = paymentOpt.get();
+        try {
+            PaymentIntent intent = stripeService.retrievePaymentIntent(payment.getStripePaymentId());
+
+            if ("succeeded".equals(intent.getStatus())) {
+                stripeService.createRefund(payment.getStripePaymentId());
+            }
+        } catch (StripeException e) {
+            // Already refunded or other Stripe issue - don't block cancellation
+            // Silently continue; cancellation still proceeds
+        }
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

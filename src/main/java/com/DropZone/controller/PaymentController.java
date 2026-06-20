@@ -60,6 +60,19 @@ public class PaymentController {
                 .build());
     }
 
+    @PostMapping("/confirm/{orderId}")
+    public ResponseEntity<Void> confirmPaymentSuccess(@PathVariable Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getStatus() == com.DropZone.enums.OrderStatus.PENDING) {
+            order.setStatus(com.DropZone.enums.OrderStatus.PROCESSING);
+            orderRepository.save(order);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(
             @RequestBody String payload,
