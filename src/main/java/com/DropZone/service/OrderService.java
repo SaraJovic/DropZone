@@ -161,6 +161,17 @@ public class OrderService {
                 .map(this::mapToOrderItemResponse)
                 .collect(Collectors.toList());
 
+        // Resolve customer fields safely (user may be null if account was deleted)
+        User user = order.getUser();
+        String firstName = user != null ? user.getFirstName() : null;
+        String lastName  = user != null ? user.getLastName()  : null;
+        String email     = user != null ? user.getEmail()     : null;
+
+        // Resolve Stripe payment intent ID if a payment exists for this order
+        String stripeId = paymentRepository.findByOrderId(order.getId())
+                .map(Payment::getStripePaymentId)
+                .orElse(null);
+
         return OrderResponse.builder()
                 .id(order.getId())
                 .status(order.getStatus())
@@ -168,6 +179,10 @@ public class OrderService {
                 .shippingAddress(order.getShippingAddress())
                 .items(items)
                 .createdAt(order.getCreatedAt())
+                .customerFirstName(firstName)
+                .customerLastName(lastName)
+                .customerEmail(email)
+                .stripePaymentIntentId(stripeId)
                 .build();
     }
 

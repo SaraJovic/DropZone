@@ -18,4 +18,12 @@ public class OrderResponse {
     private String shippingAddress;
     private List<OrderItemResponse> items;
     private LocalDateTime createdAt;
+
+    // Customer info (populated from Order.user)
+    private String customerFirstName;
+    private String customerLastName;
+    private String customerEmail;
+
+    // Stripe traceability (null when no payment has been made yet)
+    private String stripePaymentIntentId;
 }
