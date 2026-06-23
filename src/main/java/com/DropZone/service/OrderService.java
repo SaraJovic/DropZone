@@ -119,8 +119,8 @@ public class OrderService {
         Order order = orderRepository.findByIdWithItems(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new BadRequestException("Only PENDING orders can be cancelled");
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PROCESSING) {
+            throw new BadRequestException("Only PENDING or PROCESSING orders can be cancelled");
         }
 
         // Restore stock

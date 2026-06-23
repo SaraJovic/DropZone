@@ -1,7 +1,9 @@
 package com.DropZone.service;
 
+import com.DropZone.dto.request.ForgotPasswordRequest;
 import com.DropZone.dto.request.LoginRequest;
 import com.DropZone.dto.request.RegisterRequest;
+import com.DropZone.dto.request.ResetPasswordRequest;
 import com.DropZone.dto.response.AuthResponse;
 import com.DropZone.dto.response.UserResponse;
 import com.DropZone.entity.User;
@@ -16,9 +18,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -89,6 +94,31 @@ public class AuthService {
                 .token(token)
                 .user(mapToUserResponse(user))
                 .build();
+    }
+
+    public void forgotPassword(ForgotPasswordRequest request) {
+        // Always return success — never leak whether an email exists
+        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
+            String token = UUID.randomUUID().toString();
+            user.setResetToken(token);
+            user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+            userRepository.save(user);
+            emailService.sendPasswordResetEmail(user.getEmail(), token);
+        });
+    }
+
+    public void resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByResetToken(request.getToken())
+                .orElseThrow(() -> new BadRequestException("Invalid or expired reset token"));
+
+        if (user.getResetTokenExpiry() == null || LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
+            throw new BadRequestException("Invalid or expired reset token");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
     }
 
     private UserResponse mapToUserResponse(User user) {
