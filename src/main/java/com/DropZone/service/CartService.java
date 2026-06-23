@@ -5,6 +5,7 @@ import com.DropZone.dto.response.CartItemResponse;
 import com.DropZone.dto.response.CartResponse;
 import com.DropZone.entity.Cart;
 import com.DropZone.entity.CartItem;
+import com.DropZone.entity.ProductImage;
 import com.DropZone.entity.ProductVariant;
 import com.DropZone.entity.User;
 import com.DropZone.exception.BadRequestException;
@@ -135,14 +136,25 @@ public class CartService {
     }
 
     private CartItemResponse mapToCartItemResponse(CartItem item) {
+        var product = item.getProductVariant().getProduct();
+        List<ProductImage> images = product.getImages();
+        String imageUrl = null;
+        if (images != null && !images.isEmpty()) {
+            imageUrl = images.stream()
+                    .filter(ProductImage::getIsPrimary)
+                    .map(ProductImage::getImageUrl)
+                    .findFirst()
+                    .orElse(images.get(0).getImageUrl());
+        }
         return CartItemResponse.builder()
                 .id(item.getId())
                 .productVariantId(item.getProductVariant().getId())
-                .productName(item.getProductVariant().getProduct().getName())
+                .productName(product.getName())
                 .color(item.getProductVariant().getColor())
                 .size(item.getProductVariant().getSize().name())
                 .quantity(item.getQuantity())
-                .price(item.getProductVariant().getProduct().getPrice())
+                .price(product.getPrice())
+                .imageUrl(imageUrl)
                 .build();
     }
 }
